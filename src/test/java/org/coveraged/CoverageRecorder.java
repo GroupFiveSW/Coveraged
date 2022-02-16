@@ -1,10 +1,12 @@
 package org.coveraged;
 
+import org.junit.internal.TextListener;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
 
-import java.awt.event.TextListener;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -30,6 +32,7 @@ public class CoverageRecorder {
         double coverage;
 
         JUnitCore junit = new JUnitCore();
+        junit.addListener(new TextListener(System.out));
         junit.run(GenericAlgorithmTest.class);
 
 
@@ -42,6 +45,13 @@ public class CoverageRecorder {
 
         coverage = CoverageStore.getTotalCoverage();
         System.out.println("Coverage is: " + coverage + "%.");
+
+        try{
+            Files.deleteIfExists(Path.of("store"));
+        } catch (Exception ex){
+            ex.printStackTrace();
+        }
+
 
     }
 

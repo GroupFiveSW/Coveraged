@@ -4,12 +4,12 @@ package org.coveraged;
 public class GenericAlgorithm {
 
     public static void main(String[] args) {
-        testMethod();
+        new GenericAlgorithm().testMethod();
         double res = CoverageStore.getTotalCoverage();
         System.out.println(res);
     }
 
-    static public void testMethod() {
+    public void testMethod() {
         CoverageStore.init("org.coveraged.TestClass::testMethod", 8);
         int f = 2;
         if (f == 3) {

@@ -1,12 +1,13 @@
 package org.coveraged;
 
-import org.junit.jupiter.api.Test;
 
+import org.junit.Test;
 
 public class GenericAlgorithmTest {
 
     @Test
-    void test1(){
-        GenericAlgorithm.testMethod();
+    public void test1(){
+        var algo = new GenericAlgorithm();
+        algo.testMethod();
     }
 }

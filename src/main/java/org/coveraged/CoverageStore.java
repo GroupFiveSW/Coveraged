@@ -58,7 +58,7 @@ public class CoverageStore {
                 }
 
             }
-
+            br.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
