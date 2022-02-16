@@ -14,7 +14,7 @@ import java.io.FileWriter;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
-    private static MethodCallExpr wrapExpr = StaticJavaParser.parseExpression("CoverageRecorder.wrap(null, \"\", 0)");
+    private static MethodCallExpr wrapExpr = StaticJavaParser.parseExpression("CoverageStore.wrap(null, \"\", 0)");
 
     public static void main(String[] args) throws Exception {
         //if (args.length != 1) {
@@ -45,7 +45,7 @@ public class Main {
         offset = modifyWhile(method.getBody().get(), name, offset);
         offset = modifyDoWhile(method.getBody().get(), name, offset);
         int count = modifyTernary(method.getBody().get(), name, offset).get();
-        MethodCallExpr initMethod = StaticJavaParser.parseExpression("CoverageRecorder.init(\"\", 0)");
+        MethodCallExpr initMethod = StaticJavaParser.parseExpression("CoverageStore.init(\"\", 0)");
         initMethod.setArgument(0, new StringLiteralExpr(name))
                 .setArgument(1, new IntegerLiteralExpr(String.valueOf(count)));
         method.getBody().get().addStatement(0, initMethod);
@@ -171,6 +171,10 @@ public class Main {
                 thenExpr = newWrapExpr.setArgument(0,thenExpr);
                 expr.setThenExpr(thenExpr);
             }
+            idOffset.getAndIncrement();
+            newWrapExpr = wrapExpr.clone()
+                    .setArgument(1, new StringLiteralExpr(methodId))
+                    .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
             if (!elseExpr.isMethodCallExpr()) {
                 elseExpr = newWrapExpr.setArgument(0, elseExpr);
                 expr.setElseExpr(elseExpr);

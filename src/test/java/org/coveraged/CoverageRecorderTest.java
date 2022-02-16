@@ -36,6 +36,7 @@ class CoverageRecorderTest {
 
     }
 
+
     @Test
     void getTotalCoverageNoBranchesVisistedTest() {
 
@@ -52,6 +53,13 @@ class CoverageRecorderTest {
         // 1/3rd = 66.6.
         assertEquals(0, coverage);
         assertEquals(4, idCounter);
+
+    }
+
+
+    @Test
+    void testTestClass() {
+
 
     }
 }
