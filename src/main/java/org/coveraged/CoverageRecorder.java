@@ -34,7 +34,7 @@ public class CoverageRecorder {
 
     }
 
-    public static <T> T wrap(T val, String where) {
+    public static <T> T wrap(T val, String where, int branchId) {
         System.out.println(where);
         return val;
     }
