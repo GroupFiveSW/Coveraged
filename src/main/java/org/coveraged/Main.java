@@ -1,7 +1,9 @@
 package org.coveraged;
 
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ConditionalExpr;
 import com.github.javaparser.ast.expr.IntegerLiteralExpr;
@@ -9,33 +11,68 @@ import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.stmt.*;
 
-import java.io.File;
-import java.io.FileWriter;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     private static MethodCallExpr wrapExpr = StaticJavaParser.parseExpression("CoverageStore.wrap(null, \"\", 0)");
+    private static MethodCallExpr wrapToFileExpr = StaticJavaParser.parseExpression("CoverageStore.writeToFile()");
+    private static String projectPath = "C:/Users/elias/Documents/KTH/SoftwareEngineering/Algorithms";
+    private static String setupPath = "src/setup/setup.txt";
+    private static ArrayList<String> functionPaths = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
-        //if (args.length != 1) {
-        //    throw new Exception("no");
-        //}
-        //var algorithmsPath = args[0];
+        initializeFunctionPaths();
+        System.out.println("Injecting code in functions...");
+        for (String functionPath: functionPaths) {
+            String methodName = functionPath.split(" ")[1];
+            System.out.println("Method name :" + methodName);
+            String path = functionPath.split(" ")[0];
+            var cu = StaticJavaParser.parse(new File(path));
 
-        var testClass = new File("src/main/java/org/coveraged/TestClass.java");
+            cu.addImport("com.williamfiset.algorithms.TestCoverage.CoverageStore");
+            var meth = cu.findFirst(MethodDeclaration.class, (method) -> method.getName().asString().equals(methodName)).get();
 
-        var cu = StaticJavaParser.parse(testClass);
+            modifyMethod(meth, path);
+            var writer = new FileWriter(new File(path));
+            writer.write(cu.toString());
+            writer.close();
+        }
 
-        cu.findAll(ClassOrInterfaceDeclaration.class).stream().forEach((foundClass) -> {
-            foundClass.findAll(MethodDeclaration.class).stream().forEach((method) -> {
-                var path = foundClass.getFullyQualifiedName().get();
-                modifyMethod(method, path);
-            });
-        });
+        Runtime run = Runtime.getRuntime();
+        System.out.println("Running tests...");
+        Process process = run.exec(projectPath+"/gradlew.bat -Dorg.gradle.java.home=\"C:\\Program Files\\Java\\jdk1.8.0_251\" test", null, new File(projectPath));
+        process.waitFor();
+        System.out.println("Tests ran successfully");
 
-        var writer = new FileWriter(testClass);
-        writer.write(cu.toString());
-        writer.close();
+
+        double coverage = CoverageStore.getTotalCoverage();
+
+        System.out.println("Coverage is: " + coverage + "%.");
+        try{
+            Files.deleteIfExists(Path.of("C:/Users/elias/Documents/KTH/SoftwareEngineering/Coveraged/store"));
+        } catch (Exception ex){
+            ex.printStackTrace();
+        }
+    }
+
+    private static void initializeFunctionPaths() {
+        File file = new File(setupPath);
+        BufferedReader br = null;
+        try{
+            br = new BufferedReader(new FileReader(file));
+            String line;
+            while ((line = br.readLine()) != null) {
+                functionPaths.add(projectPath + "/" + line);
+            }
+            br.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void modifyMethod(MethodDeclaration method, String path){
@@ -44,11 +81,28 @@ public class Main {
         offset = modifyFor(method.getBody().get(), name, offset);
         offset = modifyWhile(method.getBody().get(), name, offset);
         offset = modifyDoWhile(method.getBody().get(), name, offset);
-        int count = modifyTernary(method.getBody().get(), name, offset).get();
+        offset = modifyTernary(method.getBody().get(), name, offset);
+        var methodBody = method.getBody().get().getStatements();
+        var lastStmt = methodBody.getLast().get();
+        var newWrapExpr = wrapExpr.clone()
+                .setArgument(1, new StringLiteralExpr(name))
+                .setArgument(2, new IntegerLiteralExpr(String.valueOf(offset.getAndIncrement())));
+        int length = methodBody.toArray().length;
+        if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
+            int index = length == 0 ? 0 : length-1;
+            methodBody.add(index, new ExpressionStmt(newWrapExpr));
+        } else {
+            int index = length == 0 ? 0 : length;
+            methodBody.add(index, new ExpressionStmt(newWrapExpr));
+            methodBody.addLast(new ExpressionStmt(wrapToFileExpr));
+        }
+        int count = offset.get();
         MethodCallExpr initMethod = StaticJavaParser.parseExpression("CoverageStore.init(\"\", 0)");
         initMethod.setArgument(0, new StringLiteralExpr(name))
                 .setArgument(1, new IntegerLiteralExpr(String.valueOf(count)));
         method.getBody().get().addStatement(0, initMethod);
+
+
     }
 
     private static AtomicInteger modifyIf(BlockStmt methodBody, String methodId, AtomicInteger idOffset) {
@@ -64,10 +118,10 @@ public class Main {
             var newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!thenBlock.getStatements().getFirst().get().asExpressionStmt().getExpression().equals(newWrapExpr)) {
-                thenBlock.addStatement(0, newWrapExpr);
-                stmt.setThenStmt(thenBlock);
-            }
+
+            thenBlock.addStatement(0, newWrapExpr);
+            stmt.setThenStmt(thenBlock);
+
 
             // Set else statement
 
@@ -84,10 +138,10 @@ public class Main {
                 newWrapExpr = wrapExpr.clone()
                         .setArgument(1, new StringLiteralExpr(methodId))
                         .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-                if (!elseBlock.getStatements().getFirst().get().asExpressionStmt().getExpression().equals(newWrapExpr)) {
-                    elseBlock.addStatement(0, wrapExpr);
-                    stmt.setElseStmt(elseBlock);
-                }
+
+                elseBlock.addStatement(0, wrapExpr);
+                stmt.setElseStmt(elseBlock);
+
             }
             idOffset.getAndIncrement();
         });
@@ -106,10 +160,10 @@ public class Main {
             var newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!bodyBlock.getStatements().getFirst().get().asExpressionStmt().getExpression().equals(newWrapExpr)) {
-                bodyBlock.addStatement(0, newWrapExpr);
-                stmt.setBody(bodyBlock);
-            }
+
+            bodyBlock.addStatement(0, newWrapExpr);
+            stmt.setBody(bodyBlock);
+
             idOffset.getAndIncrement();
         });
         return idOffset;
@@ -127,10 +181,10 @@ public class Main {
             var newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!bodyBlock.getStatements().getFirst().get().asExpressionStmt().getExpression().equals(newWrapExpr)) {
-                bodyBlock.addStatement(0, newWrapExpr);
-                stmt.setBody(bodyBlock);
-            }
+
+            bodyBlock.addStatement(0, newWrapExpr);
+            stmt.setBody(bodyBlock);
+
             idOffset.getAndIncrement();
         });
         return idOffset;
@@ -148,10 +202,10 @@ public class Main {
             var newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!bodyBlock.getStatements().getFirst().get().asExpressionStmt().getExpression().equals(newWrapExpr)) {
-                bodyBlock.addStatement(0, newWrapExpr);
-                stmt.setBody(bodyBlock);
-            }
+
+            bodyBlock.addStatement(0, newWrapExpr);
+            stmt.setBody(bodyBlock);
+
             idOffset.getAndIncrement();
         });
         return idOffset;
@@ -164,24 +218,18 @@ public class Main {
             var newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!thenExpr.isMethodCallExpr()) {
-                thenExpr = newWrapExpr.setArgument(0,thenExpr);
-                expr.setThenExpr(thenExpr);
-            } else if(!thenExpr.asMethodCallExpr().getName().equals(wrapExpr.getName())) {
-                thenExpr = newWrapExpr.setArgument(0,thenExpr);
-                expr.setThenExpr(thenExpr);
-            }
+
+            thenExpr = newWrapExpr.setArgument(0,thenExpr);
+            expr.setThenExpr(thenExpr);
+
             idOffset.getAndIncrement();
             newWrapExpr = wrapExpr.clone()
                     .setArgument(1, new StringLiteralExpr(methodId))
                     .setArgument(2, new IntegerLiteralExpr(String.valueOf(idOffset.get())));
-            if (!elseExpr.isMethodCallExpr()) {
-                elseExpr = newWrapExpr.setArgument(0, elseExpr);
-                expr.setElseExpr(elseExpr);
-            } else if (!elseExpr.asMethodCallExpr().getName().equals(wrapExpr.getName())) {
-                elseExpr = newWrapExpr.setArgument(0, elseExpr);
-                expr.setElseExpr(elseExpr);
-            }
+
+            elseExpr = newWrapExpr.setArgument(0, elseExpr);
+            expr.setElseExpr(elseExpr);
+
             idOffset.getAndIncrement();
         });
         return idOffset;

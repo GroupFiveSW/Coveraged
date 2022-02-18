@@ -8,25 +8,26 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class CoverageStore {
     static HashMap<String, boolean[]> branchMap = new HashMap<>();
-    static String path = "store";
+    static String path = "C:/Users/elias/Documents/KTH/SoftwareEngineering/Coveraged/store";
 
+    public static void main(String[] args) {
+        double cov = getTotalCoverage();
+        System.out.println(cov);
+    }
     public static <T> T wrap(T val, String where, int branchId) {
         // wrap testMethod 3
-        String content = "wrap " + where + " " + branchId;
-        writeToFile(content);
+        branchMap.get(where)[branchId] = true;
         return val;
     }
 
     public static void init(String methodId, int count) {
         // init testMethod 8 -> file
-        String content = "init " + methodId + " " + count;
-        writeToFile(content);
-        //branchMap.putIfAbsent(methodId, new boolean[count]);
+//        String content = "init " + methodId + " " + count;
+//        writeToFile(content);
+        branchMap.putIfAbsent(methodId, new boolean[count]);
     }
 
-
-
-    public static void writeToFile(String text) {
+    public static void writeToFile() {
         File file = new File(path);
         BufferedWriter bf = null;
         try {
@@ -34,17 +35,33 @@ public class CoverageStore {
                 file.createNewFile();
             }
             bf = new BufferedWriter( new FileWriter(file, true));
-            bf.write(text);
-            bf.newLine();
+            for (var method : branchMap.entrySet()) {
+                var methodValue = method.getValue();
+                String content = "init " + method.getKey() + " " + methodValue.length;
+                bf.write(content);
+                bf.newLine();
+                for (int i = 0; i < method.getValue().length; i++) {
+                    if (methodValue[i]) {
+                        String wrap = "wrap " + method.getKey() + " " + i;
+                        bf.write(wrap);
+                        bf.newLine();
+                    }
+                }
+            }
             bf.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
+
 
     public static HashMap<String, boolean[]> result() {
         HashMap<String, boolean[]> res = new HashMap<>();
         File file = new File(path);
+        if (!file.exists()) {
+            return res;
+        }
         BufferedReader br = null;
         try{
             br = new BufferedReader(new FileReader(file));
@@ -67,7 +84,12 @@ public class CoverageStore {
 
     public static double getTotalCoverage(){
         HashMap<String, boolean[]> branchMap;
+
         branchMap = result();
+        if (branchMap.isEmpty()) {
+            System.out.println("No coverage detected");
+            return 0.0;
+        }
 
         double totalCoverage = 0;
         double branchCounter = 0;
@@ -79,6 +101,8 @@ public class CoverageStore {
             totalCoverage += method.getValue().length;
         }
 
-         return (totalCoverage > 0.0) ? (branchCounter/totalCoverage)*100 : 0;
+        System.out.println(branchCounter + " branches taken out of " + totalCoverage);
+
+        return (totalCoverage > 0.0) ? (branchCounter/totalCoverage)*100 : 0;
     }
 }
