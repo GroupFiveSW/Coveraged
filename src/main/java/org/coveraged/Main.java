@@ -196,6 +196,11 @@ public class Main {
             if (stmt.getElseStmt().isPresent() && !stmt.getElseStmt().get().isIfStmt()) {
                 stmt.setElseStmt(asBlockStatement(stmt.getElseStmt().get()));
                 stmt.getElseStmt().get().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
+                stmts = stmt.getElseStmt().get().asBlockStmt().getStatements();
+                lastStmt = stmts.getLast().get();
+                if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
+                    stmts.addBefore(createWriteStmt(methodId), lastStmt);
+                }
             }
             idOffset++;
         }
