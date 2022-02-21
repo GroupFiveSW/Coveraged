@@ -3,3 +3,6 @@ src/main/java/com/williamfiset/algorithms/dp/LongestCommonSubstring.java lcs
 src/main/java/com/williamfiset/algorithms/graphtheory/treealgorithms/TreeIsomorphismWithBfs.java encodeTree
 src/main/java/com/williamfiset/algorithms/strings/LongestCommonPrefixArray.java construct
 src/main/java/com/williamfiset/algorithms/strings/LongestCommonSubstring.java getLongestCommonSubstrings
+src/main/java/com/williamfiset/algorithms/math/ChineseRemainderTheorem.java reduce
+src/main/java/com/williamfiset/algorithms/graphtheory/networkflow/examples/EdmondsKarpExample.java bfs
+src/main/java/com/williamfiset/algorithms/graphtheory/BellmanFordAdjacencyList.java bellmanFord
