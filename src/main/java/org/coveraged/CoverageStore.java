@@ -1,58 +1,54 @@
 package org.coveraged;
-
-import javax.imageio.IIOException;
 import java.io.*;
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Map;
 
 
 public class CoverageStore {
     static HashMap<String, boolean[]> branchMap = new HashMap<>();
-    static String path = "C:/Users/elias/Documents/KTH/SoftwareEngineering/Coveraged/store";
+    public static String path = "store";
 
     public static void main(String[] args) {
         double cov = getTotalCoverage();
         System.out.println(cov);
     }
-    public static <T> T wrap(T val, String where, int branchId) {
-        // wrap testMethod 3
-        branchMap.get(where)[branchId] = true;
+
+    public static <T> T wrap(T val, String methodId, int branchId) {
+        branchMap.get(methodId)[branchId] = true;
         return val;
     }
 
     public static void init(String methodId, int count) {
-        // init testMethod 8 -> file
-//        String content = "init " + methodId + " " + count;
-//        writeToFile(content);
         branchMap.putIfAbsent(methodId, new boolean[count]);
     }
 
-    public static void writeToFile() {
+    public static void writeToFile(String methodId) {
         File file = new File(path);
-        BufferedWriter bf = null;
+        PrintStream out = null;
         try {
-            if(!file.exists()){
+            if (!file.exists()) {
                 file.createNewFile();
             }
-            bf = new BufferedWriter( new FileWriter(file, true));
-            for (var method : branchMap.entrySet()) {
-                var methodValue = method.getValue();
-                String content = "init " + method.getKey() + " " + methodValue.length;
-                bf.write(content);
-                bf.newLine();
-                for (int i = 0; i < method.getValue().length; i++) {
-                    if (methodValue[i]) {
-                        String wrap = "wrap " + method.getKey() + " " + i;
-                        bf.write(wrap);
-                        bf.newLine();
-                    }
-                }
-            }
-            bf.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+            out = new PrintStream(new FileOutputStream(file, true));
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
 
+        String methodName = methodId;
+        boolean[] methodBranches = branchMap.get(methodName);
+        out.println("init " + methodName + " " + methodBranches.length);
+        for (int i = 0; i < methodBranches.length; i++) {
+            if (methodBranches[i]) {
+                out.println("wrap " + methodName + " " + i);
+            }
+        }
+
+        out.close();
+    }
+
+    private static String resolveCaller() {
+        StackTraceElement caller = Thread.currentThread().getStackTrace()[3];
+        return caller.getClassName() + "::" + caller.getMethodName();
     }
 
 
@@ -62,9 +58,8 @@ public class CoverageStore {
         if (!file.exists()) {
             return res;
         }
-        BufferedReader br = null;
-        try{
-            br = new BufferedReader(new FileReader(file));
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
             String line;
             while ((line = br.readLine()) != null) {
                 String[] contents = line.split(" ");
@@ -82,10 +77,8 @@ public class CoverageStore {
         return res;
     }
 
-    public static double getTotalCoverage(){
-        HashMap<String, boolean[]> branchMap;
-
-        branchMap = result();
+    public static double getTotalCoverage() {
+        HashMap<String,boolean[]> branchMap = result();
         if (branchMap.isEmpty()) {
             System.out.println("No coverage detected");
             return 0.0;
@@ -94,15 +87,24 @@ public class CoverageStore {
         double totalCoverage = 0;
         double branchCounter = 0;
 
-        for (var method : branchMap.entrySet()) {
-            for (boolean tf : method.getValue()) {
-                if (tf) branchCounter++;
+        for (Map.Entry<String, boolean[]> method : branchMap.entrySet()) {
+            boolean[] branches = method.getValue();
+            System.out.println(method.getKey());
+            double tfSum = 0;
+            for (boolean tf : branches) {
+                if (tf) {
+                    branchCounter++;
+                    tfSum++;
+                }
             }
+            System.out.print((int)tfSum + "/" + branches.length);
+            System.out.println(" (" + String.format("%.2f", tfSum / branches.length * 100) + "%)");
             totalCoverage += method.getValue().length;
         }
 
-        System.out.println(branchCounter + " branches taken out of " + totalCoverage);
+        System.out.println("Total");
+        System.out.println((int)branchCounter + " branches taken out of " + (int)totalCoverage);
 
-        return (totalCoverage > 0.0) ? (branchCounter/totalCoverage)*100 : 0;
+        return (totalCoverage > 0.0) ? (branchCounter / totalCoverage) * 100 : 0;
     }
 }

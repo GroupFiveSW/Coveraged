@@ -2,3 +2,4 @@ src/main/java/com/williamfiset/algorithms/graphtheory/TspDynamicProgrammingItera
 src/main/java/com/williamfiset/algorithms/dp/LongestCommonSubstring.java lcs
 src/main/java/com/williamfiset/algorithms/graphtheory/treealgorithms/TreeIsomorphismWithBfs.java encodeTree
 src/main/java/com/williamfiset/algorithms/strings/LongestCommonPrefixArray.java construct
+src/main/java/com/williamfiset/algorithms/strings/LongestCommonSubstring.java getLongestCommonSubstrings

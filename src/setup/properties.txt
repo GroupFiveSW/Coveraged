@@ -1,0 +1,2 @@
+algorithms.dir=F:\\GitHub\\SwDev\\Algorithms\\
+algorithms.java_home=C:\\Users\\klako\\.jdks\\corretto-1.8.0_322
