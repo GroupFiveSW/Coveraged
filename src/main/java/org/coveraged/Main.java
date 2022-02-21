@@ -184,26 +184,26 @@ public class Main {
         return wrapExpr;
     }
 
+    private static int modifyBlock(BlockStmt block, String methodId, int idOffset) {
+        block.addStatement(0, createWrapExpr(methodId, idOffset));
+        var stmts = block.getStatements();
+        var lastStmt = stmts.getLast().get();
+        if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
+            stmts.addBefore(createWriteStmt(methodId), lastStmt);
+        }
+        idOffset++;
+        return idOffset;
+    }
+
     private static int modifyIf(BlockStmt methodBody, String methodId, int idOffset) {
         for (var stmt : methodBody.findAll(IfStmt.class)) {
             stmt.setThenStmt(asBlockStatement(stmt.getThenStmt()));
-            stmt.getThenStmt().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
-            var stmts = stmt.getThenStmt().asBlockStmt().getStatements();
-            var lastStmt = stmts.getLast().get();
-            if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
-                stmts.addBefore(createWriteStmt(methodId), lastStmt);
-            }
+            idOffset = modifyBlock(stmt.getThenStmt().asBlockStmt(), methodId, idOffset);
 
             if (stmt.getElseStmt().isPresent() && !stmt.getElseStmt().get().isIfStmt()) {
                 stmt.setElseStmt(asBlockStatement(stmt.getElseStmt().get()));
-                stmt.getElseStmt().get().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
-                stmts = stmt.getElseStmt().get().asBlockStmt().getStatements();
-                lastStmt = stmts.getLast().get();
-                if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
-                    stmts.addBefore(createWriteStmt(methodId), lastStmt);
-                }
+                idOffset = modifyBlock(stmt.getElseStmt().get().asBlockStmt(), methodId, idOffset);
             }
-            idOffset++;
         }
         return idOffset;
     }
@@ -211,13 +211,11 @@ public class Main {
     private static int modifyFor(BlockStmt methodBody, String methodId, int idOffset) {
         for (var stmt : methodBody.findAll(ForStmt.class)) {
             stmt.setBody(asBlockStatement(stmt.getBody()));
-            stmt.getBody().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
-            var stmts = stmt.getBody().asBlockStmt().getStatements();
-            var lastStmt = stmts.getLast().get();
-            if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
-                stmts.addBefore(createWriteStmt(methodId), lastStmt);
-            }
-            idOffset++;
+            idOffset = modifyBlock(stmt.getBody().asBlockStmt(), methodId, idOffset);
+        }
+        for (var stmt : methodBody.findAll(ForEachStmt.class)) {
+            stmt.setBody(asBlockStatement(stmt.getBody()));
+            idOffset = modifyBlock(stmt.getBody().asBlockStmt(), methodId, idOffset);
         }
         return idOffset;
     }
@@ -225,13 +223,7 @@ public class Main {
     private static int modifyWhile(BlockStmt methodBody, String methodId, int idOffset) {
         for (var stmt : methodBody.findAll(WhileStmt.class)) {
             stmt.setBody(asBlockStatement(stmt.getBody()));
-            stmt.getBody().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
-            var stmts = stmt.getBody().asBlockStmt().getStatements();
-            var lastStmt = stmts.getLast().get();
-            if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
-                stmts.addBefore(createWriteStmt(methodId), lastStmt);
-            }
-            idOffset++;
+            idOffset = modifyBlock(stmt.getBody().asBlockStmt(), methodId, idOffset);
         }
         return idOffset;
     }
@@ -239,13 +231,7 @@ public class Main {
     private static int modifyDoWhile(BlockStmt methodBody, String methodId, int idOffset) {
         for (var stmt : methodBody.findAll(DoStmt.class)) {
             stmt.setBody(asBlockStatement(stmt.getBody()));
-            stmt.getBody().asBlockStmt().addStatement(0, createWrapExpr(methodId, idOffset));
-            var stmts = stmt.getBody().asBlockStmt().getStatements();
-            var lastStmt = stmts.getLast().get();
-            if (lastStmt.isReturnStmt() || lastStmt.isThrowStmt()) {
-                stmts.addBefore(createWriteStmt(methodId), lastStmt);
-            }
-            idOffset++;
+            idOffset = modifyBlock(stmt.getBody().asBlockStmt(), methodId, idOffset);
         }
         return idOffset;
     }
