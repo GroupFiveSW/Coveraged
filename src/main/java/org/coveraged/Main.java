@@ -32,6 +32,7 @@ public class Main {
         var coverageStore = "src/main/java/org/coveraged/CoverageStore.java";
         var coverageStoreLocal = new File(coverageStore);
         var coverageStoreRemote = new File(projectPath + coverageStore);
+        Files.createDirectories(coverageStoreRemote.toPath().getParent());
         Files.copy(coverageStoreLocal.toPath(), coverageStoreRemote.toPath(), StandardCopyOption.REPLACE_EXISTING);
         CoverageStore.path = projectPath + "store";
 
